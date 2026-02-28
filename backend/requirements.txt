@@ -1,1 +1,11 @@
-fastapi
+fastapi[standard]
+uvicorn[standard]
+pydantic-settings
+numpy
+scipy
+aiortc
+av
+pytest
+pytest-asyncio
+pytest-anyio
+httpx
