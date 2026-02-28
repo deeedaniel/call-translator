@@ -137,3 +137,50 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+lib/
+lib64/
+venv/
+env/
+.venv/
+share/python-wheels/
+htmlcov/
+
+# Type checker cache
+.mypy_cache/
+.dmypy.json
+dmypy.run
+
+# pytest cache
+.pytest_cache/
+
+# Sphinx documentation
+docs/_build/
+
+# Jupyter Notebook files
+.ipynb_checkpoints
+
+# Editor directories and files
+.idea/  # For PyCharm/IntelliJ
+.vscode/ # For VS Code
+*.swp
+*~
+.DS_Store
+
+# FastAPI specific files
+.env
+.fastapi-cloud-cli-cache.json
+
+# OS generated files
+.gitignore

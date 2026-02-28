@@ -5,6 +5,18 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [backendMessage, setBackendMessage] = useState<string>('')
+
+  const testBackend = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/')
+      const data = await response.json()
+      setBackendMessage(data.message)
+    } catch (error) {
+      setBackendMessage('Error connecting to backend')
+      console.error('Backend error:', error)
+    }
+  }
 
   return (
     <>
@@ -21,6 +33,12 @@ function App() {
         <button onClick={() => setCount((count) => count + 1)}>
           count is {count}
         </button>
+        <button onClick={testBackend}>
+          Test Backend API
+        </button>
+        {backendMessage && (
+          <p>Backend says: <strong>{backendMessage}</strong></p>
+        )}
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
