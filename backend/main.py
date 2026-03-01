@@ -13,6 +13,7 @@ from services.asr_pipeline import ASRPipeline
 from services.asr_worker import ASRWorker
 from services.audio_bus import AudioBus
 from services.event_emitter import EventEmitter
+from services.analytics.analytics_pipeline import AnalyticsPipeline
 from services.translation_pipeline import TranslationPipeline
 from services.translation_worker import TranslationWorker
 from services.vad_worker import VADWorker
@@ -26,6 +27,7 @@ _audio_bus = AudioBus()
 _event_emitter = EventEmitter()
 _pipelines: dict[str, ASRPipeline] = {}
 _translation_pipelines: dict[str, TranslationPipeline] = {}
+_analytics_pipelines: dict[str, AnalyticsPipeline] = {}
 
 # Eagerly wire up the bus so TestClient and lifespan-less usage both work
 twilio_ws.set_audio_bus(_audio_bus)
@@ -36,6 +38,9 @@ webrtc_signal.set_audio_bus(_audio_bus)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logging.getLogger(__name__).info("AudioBus initialised — telephony ingestion ready")
     yield
+    for pipeline in list(_analytics_pipelines.values()):
+        await pipeline.stop()
+    _analytics_pipelines.clear()
     for pipeline in list(_translation_pipelines.values()):
         await pipeline.stop()
     _translation_pipelines.clear()
@@ -130,6 +135,33 @@ async def start_translation_pipeline(
 async def stop_translation_pipeline(call_id: str) -> None:
     """Stop and remove the translation pipeline for a call."""
     pipeline = _translation_pipelines.pop(call_id, None)
+    if pipeline is not None:
+        await pipeline.stop()
+
+
+async def start_analytics_pipeline(call_id: str) -> AnalyticsPipeline:
+    """Launch an analytics pipeline (prosody + KWS → Emitter) for a call."""
+    if call_id in _analytics_pipelines and _analytics_pipelines[call_id].is_running:
+        return _analytics_pipelines[call_id]
+
+    pipeline = AnalyticsPipeline(
+        call_id=call_id,
+        audio_bus=_audio_bus,
+        emitter=_event_emitter,
+        keywords_path=settings.analytics_keywords_path or None,
+        chunk_ms=settings.analytics_chunk_ms,
+        emit_interval_ms=settings.analytics_emit_interval_ms,
+        stress_classifier_type=settings.analytics_stress_classifier,
+        ml_model_path=settings.analytics_ml_model_path or None,
+    )
+    _analytics_pipelines[call_id] = pipeline
+    await pipeline.start()
+    return pipeline
+
+
+async def stop_analytics_pipeline(call_id: str) -> None:
+    """Stop and remove the analytics pipeline for a call."""
+    pipeline = _analytics_pipelines.pop(call_id, None)
     if pipeline is not None:
         await pipeline.stop()
 

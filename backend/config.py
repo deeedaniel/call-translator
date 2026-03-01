@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     nvidia_translate_function_id: str = "0778f2eb-b64d-45e7-acae-7dd9b9b35b4d"
     nvidia_translate_grpc_endpoint: str = "grpc.nvcf.nvidia.com:443"
 
+    # ---- Analytics pipeline settings ----
+    analytics_chunk_ms: int = 500
+    analytics_emit_interval_ms: int = 500
+    analytics_keywords_path: str = ""
+    analytics_stress_classifier: str = "rule_based"
+    analytics_ml_model_path: str = ""
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

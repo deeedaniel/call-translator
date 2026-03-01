@@ -13,3 +13,6 @@ ten-vad
 nvidia-riva-client
 grpcio
 grpcio-tools
+opensmile
+scikit-learn
+joblib
