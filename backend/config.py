@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 
 from pydantic_settings import BaseSettings
 
@@ -29,6 +30,9 @@ class Settings(BaseSettings):
     # ---- NVIDIA NIM Translation settings ----
     nvidia_translate_function_id: str = "0778f2eb-b64d-45e7-acae-7dd9b9b35b4d"
     nvidia_translate_grpc_endpoint: str = "grpc.nvcf.nvidia.com:443"
+
+    # ---- NVIDIA NIM TTS settings ----
+    nvidia_tts_function_id: str = ""
 
     # ---- Analytics pipeline settings ----
     analytics_chunk_ms: int = 500

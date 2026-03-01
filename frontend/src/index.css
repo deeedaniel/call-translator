@@ -1,68 +1,80 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@theme {
+  --color-dispatch-950: #0a0c10;
+  --color-dispatch-900: #111318;
+  --color-dispatch-800: #1a1d25;
+  --color-dispatch-700: #252933;
+  --color-dispatch-600: #363b48;
+  --color-dispatch-500: #4e5566;
+  --color-dispatch-400: #7a8298;
+  --color-dispatch-300: #a3aabe;
+  --color-dispatch-200: #c8cdd9;
+  --color-dispatch-100: #e8eaf0;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  --color-stress-low: #22c55e;
+  --color-stress-medium: #f59e0b;
+  --color-stress-high: #ef4444;
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  --color-accent: #3b82f6;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+@keyframes pulse-stress {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+@keyframes pulse-stress-high {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50% { opacity: 0.85; box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.3); }
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+@keyframes flash-in {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fade-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@utility animate-pulse-stress {
+  animation: pulse-stress 2s ease-in-out infinite;
+}
+
+@utility animate-pulse-stress-high {
+  animation: pulse-stress-high 1s ease-in-out infinite;
+}
+
+@utility animate-flash-in {
+  animation: flash-in 0.3s ease-out forwards;
+}
+
+@utility animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@utility animate-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@utility animate-fade-out {
+  animation: fade-out 0.5s ease-out forwards;
 }

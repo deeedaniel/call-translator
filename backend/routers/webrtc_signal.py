@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from models.webrtc_models import SignalMessage
 from services.audio_bus import AudioBus
+from services.event_emitter import EventEmitter
 from services.webrtc_peer import WebRTCPeerManager
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,7 @@ router = APIRouter(tags=["webrtc"])
 
 # Injected at app startup; see main.py
 audio_bus: AudioBus | None = None
+event_emitter: EventEmitter | None = None
 _peers: dict[str, WebRTCPeerManager] = {}
 
 
@@ -23,18 +26,39 @@ def set_audio_bus(bus: AudioBus) -> None:
     audio_bus = bus
 
 
+def set_event_emitter(emitter: EventEmitter) -> None:
+    global event_emitter
+    event_emitter = emitter
+
+
+async def _forward_events(ws: WebSocket, queue: asyncio.Queue[str]) -> None:
+    """Read pipeline events from the queue and forward them over the WebSocket."""
+    try:
+        while True:
+            json_str = await queue.get()
+            await ws.send_text(json_str)
+    except Exception:
+        pass
+
+
 @router.websocket("/ws/webrtc")
 async def webrtc_signaling(ws: WebSocket, call_id: str = Query(...)) -> None:
-    """WebSocket endpoint for WebRTC signaling between browser and server.
+    """WebSocket endpoint for WebRTC signaling and pipeline event streaming.
 
     Query params:
         call_id: The call identifier to subscribe to on the AudioBus.
 
-    Protocol (JSON messages with "kind" discriminator):
-        -> {kind: "sdp", sdp: {type: "offer", sdp: "..."}}
-        <- {kind: "sdp", sdp: {type: "answer", sdp: "..."}}
-        -> {kind: "ice", ice: {candidate: "...", sdpMid: "...", sdpMLineIndex: 0}}
-        -> {kind: "bye"}
+    Protocol (JSON messages):
+        Signaling (discriminated by "kind"):
+            -> {kind: "sdp", sdp: {type: "offer", sdp: "..."}}
+            <- {kind: "sdp", sdp: {type: "answer", sdp: "..."}}
+            -> {kind: "ice", ice: {candidate: "...", sdpMid: "...", sdpMLineIndex: 0}}
+            -> {kind: "bye"}
+        Pipeline events (discriminated by "event"):
+            <- {event: "transcript", ...}
+            <- {event: "translation", ...}
+            <- {event: "analytics", ...}
+            <- {event: "barge_in", ...}
     """
     assert audio_bus is not None, "AudioBus not initialised"
 
@@ -43,6 +67,13 @@ async def webrtc_signaling(ws: WebSocket, call_id: str = Query(...)) -> None:
 
     peer = WebRTCPeerManager(call_id=call_id, audio_bus=audio_bus)
     _peers[call_id] = peer
+
+    event_queue: asyncio.Queue[str] | None = None
+    forward_task: asyncio.Task[None] | None = None
+
+    if event_emitter is not None:
+        event_queue = await event_emitter.subscribe(call_id)
+        forward_task = asyncio.create_task(_forward_events(ws, event_queue))
 
     try:
         while True:
@@ -74,5 +105,13 @@ async def webrtc_signaling(ws: WebSocket, call_id: str = Query(...)) -> None:
     except Exception:
         logger.exception("Error in WebRTC signaling handler for call %s", call_id)
     finally:
+        if forward_task is not None:
+            forward_task.cancel()
+            try:
+                await forward_task
+            except asyncio.CancelledError:
+                pass
+        if event_emitter is not None and event_queue is not None:
+            await event_emitter.unsubscribe(call_id, event_queue)
         await peer.close()
         _peers.pop(call_id, None)

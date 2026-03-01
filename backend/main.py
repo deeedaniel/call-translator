@@ -32,6 +32,7 @@ _analytics_pipelines: dict[str, AnalyticsPipeline] = {}
 # Eagerly wire up the bus so TestClient and lifespan-less usage both work
 twilio_ws.set_audio_bus(_audio_bus)
 webrtc_signal.set_audio_bus(_audio_bus)
+webrtc_signal.set_event_emitter(_event_emitter)
 
 
 @asynccontextmanager
@@ -169,3 +170,13 @@ async def stop_analytics_pipeline(call_id: str) -> None:
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/api/active-calls")
+async def active_calls():
+    """Return the list of call IDs with running ASR pipelines."""
+    return {
+        "calls": [
+            cid for cid, p in _pipelines.items() if p.is_running
+        ]
+    }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import logging
+from typing import Awaitable, Callable
 
 from models.twilio_events import (
     MediaEvent,
@@ -14,6 +15,9 @@ from services.audio_transcoder import AudioTranscoder
 
 logger = logging.getLogger(__name__)
 
+OnStartCallback = Callable[[str], Awaitable[None]]
+OnStopCallback = Callable[[str], Awaitable[None]]
+
 
 class TwilioStreamSession:
     """Manages the state of a single Twilio Media Stream connection.
@@ -21,9 +25,16 @@ class TwilioStreamSession:
     Lifecycle: connected -> start -> N x media -> stop
     """
 
-    def __init__(self, audio_bus: AudioBus) -> None:
+    def __init__(
+        self,
+        audio_bus: AudioBus,
+        on_start: OnStartCallback | None = None,
+        on_stop: OnStopCallback | None = None,
+    ) -> None:
         self._bus = audio_bus
         self._transcoder = AudioTranscoder()
+        self._on_start_cb = on_start
+        self._on_stop_cb = on_stop
         self.stream_sid: str | None = None
         self.call_sid: str | None = None
         self._sequence: int = 0
@@ -60,6 +71,8 @@ class TwilioStreamSession:
             self.stream_sid,
             self.call_sid,
         )
+        if self._on_start_cb:
+            await self._on_start_cb(self.call_id)
 
     async def _on_media(self, event: MediaEvent) -> None:
         if not self._started:
@@ -73,11 +86,15 @@ class TwilioStreamSession:
 
     async def _on_stop(self, event: StopEvent) -> None:
         logger.info("Twilio stream stopped: stream=%s", self.stream_sid)
+        if self._on_stop_cb:
+            await self._on_stop_cb(self.call_id)
         await self._bus.close_channel(self.call_id)
         self._started = False
 
     async def cleanup(self) -> None:
         """Called when the WebSocket disconnects (possibly without a stop event)."""
         if self._started:
+            if self._on_stop_cb:
+                await self._on_stop_cb(self.call_id)
             await self._bus.close_channel(self.call_id)
             self._started = False

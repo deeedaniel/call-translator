@@ -117,3 +117,42 @@ def test_signaling_ws_bye_closes_connection():
 
     with client.websocket_connect("/ws/webrtc?call_id=test-bye") as ws:
         ws.send_text(json.dumps({"kind": "bye"}))
+
+
+def test_event_forwarding_over_signaling_ws():
+    """Pipeline events emitted on the EventEmitter should be forwarded to the WS client."""
+    import threading
+    from starlette.testclient import TestClient
+    from main import app, get_event_emitter
+    from models.asr_events import TranscriptEvent
+
+    emitter = get_event_emitter()
+    call_id = "test-forward"
+    client = TestClient(app)
+
+    with client.websocket_connect(f"/ws/webrtc?call_id={call_id}") as ws:
+        evt = TranscriptEvent(
+            call_id=call_id,
+            seq=0,
+            original_transcript="Hola",
+            detected_language="es",
+            asr_confidence=0.95,
+            is_final=True,
+        )
+
+        def emit_event():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(emitter.emit(evt))
+            loop.close()
+
+        t = threading.Thread(target=emit_event)
+        t.start()
+        t.join(timeout=2)
+
+        data = ws.receive_json(mode="text")
+        assert data["event"] == "transcript"
+        assert data["original_transcript"] == "Hola"
+        assert data["call_id"] == call_id
+
+        ws.send_text(json.dumps({"kind": "bye"}))
