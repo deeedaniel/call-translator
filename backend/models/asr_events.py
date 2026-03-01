@@ -15,11 +15,17 @@ class WordTimestamp(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
-class BaseASREvent(BaseModel):
-    """Common fields shared by every ASR pipeline event."""
+class BaseEvent(BaseModel):
+    """Common fields shared by every pipeline event (ASR, translation, TTS, etc.)."""
 
     call_id: str
     timestamp_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BaseASREvent(BaseEvent):
+    """Base for ASR-specific events. Inherits call_id and timestamp_utc."""
+
+    pass
 
 
 class TranscriptEvent(BaseASREvent):

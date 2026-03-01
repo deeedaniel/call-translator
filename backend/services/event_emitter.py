@@ -4,13 +4,13 @@ import asyncio
 import logging
 from collections import defaultdict
 
-from models.asr_events import BaseASREvent
+from models.asr_events import BaseEvent
 
 logger = logging.getLogger(__name__)
 
 
 class EventEmitter:
-    """In-process async pub/sub for ASR pipeline events.
+    """In-process async pub/sub for pipeline events.
 
     Mirrors the AudioBus pattern: multiple subscribers each receive every
     event independently via their own asyncio.Queue.
@@ -26,7 +26,7 @@ class EventEmitter:
             self._lock = asyncio.Lock()
         return self._lock
 
-    async def emit(self, event: BaseASREvent) -> None:
+    async def emit(self, event: BaseEvent) -> None:
         """Serialise an event to JSON and fan-out to all subscribers for its call_id."""
         json_str = event.model_dump_json()
         call_id = event.call_id

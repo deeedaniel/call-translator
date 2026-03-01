@@ -13,6 +13,8 @@ from services.asr_pipeline import ASRPipeline
 from services.asr_worker import ASRWorker
 from services.audio_bus import AudioBus
 from services.event_emitter import EventEmitter
+from services.translation_pipeline import TranslationPipeline
+from services.translation_worker import TranslationWorker
 from services.vad_worker import VADWorker
 
 logging.basicConfig(
@@ -23,6 +25,7 @@ logging.basicConfig(
 _audio_bus = AudioBus()
 _event_emitter = EventEmitter()
 _pipelines: dict[str, ASRPipeline] = {}
+_translation_pipelines: dict[str, TranslationPipeline] = {}
 
 # Eagerly wire up the bus so TestClient and lifespan-less usage both work
 twilio_ws.set_audio_bus(_audio_bus)
@@ -33,7 +36,9 @@ webrtc_signal.set_audio_bus(_audio_bus)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logging.getLogger(__name__).info("AudioBus initialised — telephony ingestion ready")
     yield
-    # Stop all running ASR pipelines on shutdown
+    for pipeline in list(_translation_pipelines.values()):
+        await pipeline.stop()
+    _translation_pipelines.clear()
     for pipeline in list(_pipelines.values()):
         await pipeline.stop()
     _pipelines.clear()
@@ -92,6 +97,39 @@ async def start_asr_pipeline(call_id: str) -> ASRPipeline:
 async def stop_asr_pipeline(call_id: str) -> None:
     """Stop and remove the ASR pipeline for a call."""
     pipeline = _pipelines.pop(call_id, None)
+    if pipeline is not None:
+        await pipeline.stop()
+
+
+async def start_translation_pipeline(
+    call_id: str,
+    source_language: str,
+    target_language: str,
+) -> TranslationPipeline:
+    """Launch a translation pipeline for a call."""
+    if call_id in _translation_pipelines and _translation_pipelines[call_id].is_running:
+        return _translation_pipelines[call_id]
+
+    worker = TranslationWorker(
+        nvidia_api_key=settings.nvidia_api_key,
+        function_id=settings.nvidia_translate_function_id,
+        grpc_endpoint=settings.nvidia_translate_grpc_endpoint,
+    )
+    pipeline = TranslationPipeline(
+        call_id=call_id,
+        source_language=source_language,
+        target_language=target_language,
+        emitter=_event_emitter,
+        worker=worker,
+    )
+    _translation_pipelines[call_id] = pipeline
+    await pipeline.start()
+    return pipeline
+
+
+async def stop_translation_pipeline(call_id: str) -> None:
+    """Stop and remove the translation pipeline for a call."""
+    pipeline = _translation_pipelines.pop(call_id, None)
     if pipeline is not None:
         await pipeline.stop()
 

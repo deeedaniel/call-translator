@@ -8,8 +8,8 @@ class Settings(BaseSettings):
     public_host: str = "localhost:8000"
 
     # Twilio credentials (optional; used for request signature validation)
-    twilio_account_sid: str = ""
-    twilio_auth_token: str = ""
+    twilio_account_sid: str = os.getenv("TWILIO_ACCOUNT_SID")
+    twilio_auth_token: str = os.getenv("TWILIO_AUTH_TOKEN")
 
     # STUN/TURN server for WebRTC ICE negotiation
     webrtc_stun_url: str = "stun:stun.l.google.com:19302"
@@ -22,9 +22,13 @@ class Settings(BaseSettings):
     vad_min_silence_ms: int = 700
 
     # ---- NVIDIA NIM ASR settings ----
-    nvidia_api_key: str = ""
+    nvidia_api_key: str = os.getenv("NVIDIA_API_KEY")
     nvidia_asr_function_id: str = "d3fe9151-442b-4204-a70d-5fcc597fd610"
     nvidia_grpc_endpoint: str = "grpc.nvcf.nvidia.com:443"
+
+    # ---- NVIDIA NIM Translation settings ----
+    nvidia_translate_function_id: str = "0778f2eb-b64d-45e7-acae-7dd9b9b35b4d"
+    nvidia_translate_grpc_endpoint: str = "grpc.nvcf.nvidia.com:443"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
